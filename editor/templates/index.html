@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Kod Tahrirlagichi</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Python Kod Tahrirlagichi</h1>
+            <p>Brauzeringizda Python kodlarini yozing va ishga tushiring</p>
+        </header>
+
+        <form method="POST" id="codeForm">
+            {% csrf_token %}
+            
+            <div class="editor-container">
+                <!-- Code Editor Section -->
+                <div class="code-editor">
+                    <div class="editor-header">
+                        <div class="editor-title">
+                            <span class="dot-1"></span>
+                            <span class="dot-2"></span>
+                            <span class="dot-3"></span>
+                            <span>asosiy.py</span>
+                        </div>
+                    </div>
+                    <textarea 
+                        id="code" 
+                        name="code" 
+                        placeholder="# Python kodlaringizni shu yerga yozing..."
+                        spellcheck="false"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="handleInput()"
+                        autofocus
+                        style="width: 100%; min-height: 300px; padding: 15px; font-family: 'Fira Code', monospace; font-size: 14px; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 4px; resize: vertical;"
+                    >{% if code %}{{ code }}{% else %}print("Hello, World!")
+# Python kodlaringizni shu yerga yozing
+# Natijani ko'rish uchun 'Kodni Ishga Tushirish' tugmasini bosing{% endif %}</textarea>
+                </div>
+
+                <!-- Output Section -->
+                <div class="output-container">
+                    <div class="output-header">
+                        <div class="output-title">
+                            <i class="fas fa-terminal"></i>
+                            <span>Natija</span>
+                        </div>
+                    </div>
+                    <div class="output-content" id="output">{% if output %}{{ output }}{% else %}Natija shu yerda ko'rinadi...{% endif %}</div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-container">
+                <button type="button" class="btn btn-secondary" id="clearBtn" title="Tozalash (Ctrl+D)">
+                    <i class="fas fa-trash-alt"></i> Tozalash
+                </button>
+                <button type="submit" class="btn btn-primary" id="runBtn" title="Kodni ishga tushirish (Ctrl+Enter)">
+                    <i class="fas fa-play"></i> Kodni Ishga Tushirish
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeForm = document.getElementById('codeForm');
+            const codeInput = document.getElementById('code');
+            const outputDiv = document.getElementById('output');
+            const clearBtn = document.getElementById('clearBtn');
+            const runBtn = document.getElementById('runBtn');
+            let isRunning = false;
+
+            // Auto-resize textarea
+            function autoResize() {
+                codeInput.style.overflow = 'hidden';
+                codeInput.style.height = 'auto';
+                codeInput.style.height = (codeInput.scrollHeight) + 'px';
+            }
+
+            // Initial resize
+            autoResize();
+            
+            // Run code
+            codeForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (isRunning) return;
+                
+                isRunning = true;
+                runBtn.disabled = true;
+                runBtn.innerHTML = '<span class="loading"></span> Bajarilmoqda...';
+                
+                // Submit form via AJAX
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `code=${encodeURIComponent(codeInput.value)}`
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newOutput = doc.querySelector('#output').innerHTML;
+                    outputDiv.innerHTML = newOutput || 'Hech qanday natija topilmadi';
+                })
+                .catch(error => {
+                    outputDiv.textContent = 'Xato: ' + error.message;
+                })
+                .finally(() => {
+                    isRunning = false;
+                    runBtn.disabled = false;
+                    runBtn.innerHTML = '<i class="fas fa-play"></i> Kodni Ishga Tushirish';
+                    
+                    // Scroll to output
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                });
+            });
+
+            // Clear output
+            clearBtn.addEventListener('click', function() {
+                outputDiv.textContent = 'Natija tozalandi';
+                setTimeout(() => {
+                    if (outputDiv.textContent === 'Natija tozalandi') {
+                        outputDiv.textContent = '';
+                    }
+                }, 2000);
+            });
+
+            // Add syntax highlighting (basic)
+            function applySyntaxHighlighting() {
+                // This is a basic implementation
+                // For full syntax highlighting, consider using a library like Prism.js or Highlight.js
+                const code = codeInput.value;
+                // Example: Highlight comments
+                const highlighted = code
+                    .replace(/(#.*$)/gm, '<span class="comment">$1</span>')
+                    .replace(/('.*?'|".*?")/g, '<span class="string">$1</span>')
+                    .replace(/\b(and|as|assert|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|True|False|None)\b/g, 
+                            '<span class="keyword">$1</span>')
+                    .replace(/\b(\d+\.?\d*)\b/g, '<span class="number">$1</span>')
+                    .replace(/(\+|-|\*|\/|%|==|!=|<=|>=|<|>|=|\|\||&&|!|\^|~|\||&|<<|>>)/g, 
+                            '<span class="operator">$1</span>')
+                    .replace(/\b(def|class)\s+(\w+)\s*(\([^)]*\))?/g, 
+                            '<span class="keyword">$1</span> <span class="function">$2</span>$3');
+                
+                // Create a temporary element to hold the highlighted code
+                const temp = document.createElement('div');
+                temp.innerHTML = highlighted;
+                
+                // Get the cursor position
+                const start = codeInput.selectionStart;
+                const end = codeInput.selectionEnd;
+                
+                // Only update if the content has changed
+                if (codeInput.value !== temp.textContent) {
+                    // Preserve the cursor position
+                    requestAnimationFrame(() => {
+                        codeInput.value = temp.textContent;
+                        codeInput.setSelectionRange(start, end);
+                    });
+                }
+            }
+
+            // Handle tab key
+            function handleKeyDown(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    // Insert 4 spaces
+                    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                    
+                    // Move cursor position after the inserted spaces
+                    this.selectionStart = this.selectionEnd = start + 4;
+                    
+                    // Trigger input event
+                    const event = new Event('input');
+                    this.dispatchEvent(event);
+                    return false;
+                }
+                return true;
+            }
+            
+            // Handle input changes
+            function handleInput() {
+                autoResize();
+            }
+            
+            // Initial setup
+            codeInput.addEventListener('input', handleInput);
+            window.addEventListener('load', function() {
+                autoResize();
+            });
+            
+            // Handle tab key for indentation
+            codeInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    // Set textarea value to: text before caret + tab + text after caret
+                    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                    
+                    // Put caret at right position again
+                    this.selectionStart = this.selectionEnd = start + 4;
+                    
+                    // Apply syntax highlighting
+                    applySyntaxHighlighting();
+                } else if (e.key === 'Enter') {
+                    // Auto-indent new lines
+                    if (e.shiftKey && e.key === 'Enter') {
+                        // Handle Shift+Enter to run the code
+                        e.preventDefault();
+                        codeForm.dispatchEvent(new Event('submit'));
+                    } else {
+                        const start = this.selectionStart;
+                        const value = this.value;
+                        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                        const line = value.substring(lineStart, start);
+                        const match = line.match(/^\s*/);
+                        if (match) {
+                            e.preventDefault();
+                            const indent = match[0];
+                            const newIndent = line.trim().endsWith(':') ? indent + '    ' : indent;
+                            document.execCommand('insertText', false, '\n' + newIndent);
+                        }
+                    }
+                }
+            });
+            
+            // Add keyboard shortcut (Ctrl+Enter to run code)
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    codeForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+    </script>
+</body>
+</html>
